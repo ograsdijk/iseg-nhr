@@ -15,7 +15,7 @@ class Voltage:
     def __init__(self, device: pyvisa.resources.SerialInstrument, channel: int):
         self._device = device
         self._channel = channel
-        self.ramp = Ramp(self._device, channel, "VOLT")
+        self._ramp = Ramp(self._device, channel, "VOLT")
 
     def _query(self, cmd: str) -> str:
         ret = self._device.query(f"{cmd} (@{self._channel})")
@@ -42,6 +42,10 @@ class Voltage:
                 f"channel {self._channel} voltage error in command {cmd}, NHR returned"
                 f" {ret}"
             )
+
+    @property
+    def ramp(self) -> Ramp:
+        return self._ramp
 
     @property
     def measured(self) -> float:

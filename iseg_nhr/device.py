@@ -1,4 +1,6 @@
-from typing import Tuple, cast
+from __future__ import annotations
+
+from typing import Tuple, cast, Sequence
 
 import pyvisa
 from pyvisa import constants
@@ -7,6 +9,10 @@ from .channel import Channel
 from .register import ControlRegister, EventRegister, StatusRegister, get_set_bits
 from .supply import Supply
 
+def _create_channel(module: NHR, channel_id: int):
+    def channel_property(self: NHR) -> Channel:
+        return getattr(self, f"_channel{channel_id}")
+    return channel_property
 
 class NHR:
     def __init__(
@@ -30,11 +36,14 @@ class NHR:
                 read_termination="\r\n"
             ),
         )
-        for ch in range(self.number_channels):
-            setattr(self, f"channel{ch}", Channel(self._device, ch))
 
-        self.channels = self.number_channels
-        self.supply = Supply(self._device)
+        
+        self._channels = self.number_channels
+        for ch in range(self._channels):
+            setattr(self, f"_channel{ch}", Channel(self._device, ch))
+            setattr(NHR, f"channel{ch}", property(_create_channel(self, ch)))
+
+        self._supply = Supply(self._device)
 
     def _query(self, cmd: str) -> str:
         ret = self._device.query(cmd)
@@ -48,10 +57,14 @@ class NHR:
             raise ValueError(f"error in command {cmd}, NHR returned {ret}")
 
     @property
+    def supply(self) -> Supply:
+        return self._supply
+
+    @property
     def identity(self) -> str:
         return self._query("*IDN?")
 
-    def clear_status(self):
+    def status_clear(self):
         self._write("*CLS")
 
     def reset(self):
@@ -143,3 +156,41 @@ class NHR:
 
     def config_save(self):
         self._write(":SYS:USER:CONF SAVE")
+
+    def on(self, channels: Sequence[int]):
+        for ch in channels:
+            if ch >= self._channels:
+                raise ValueError("channel index exceeds module channel number")
+            channel = cast(Channel, getattr(self, f"channel{ch}"))
+            channel.on()
+
+    def off(self, channels: Sequence[int]):
+        for ch in channels:
+            if ch >= self._channels:
+                raise ValueError("channel index exceeds module channel number")
+            channel = cast(Channel, getattr(self, f"channel{ch}"))
+            channel.off()
+
+    @property
+    def voltages(self) -> Tuple[float]:
+        voltages = []
+        for ch in range(self._channels):
+            channel = cast(Channel, getattr(self, f"channel{ch}"))
+            voltages.append(channel.voltage.measured)
+        return tuple(voltages)
+
+    @property
+    def currents(self) -> Tuple[float]:
+        currents = []
+        for ch in range(self._channels):
+            channel = cast(Channel, getattr(self, f"channel{ch}"))
+            currents.append(channel.current.measured)
+        return tuple(currents)
+
+    @property
+    def setpoints(self) -> Tuple[float]:
+        voltages = []
+        for ch in range(self._channels):
+            channel = cast(Channel, getattr(self, f"channel{ch}"))
+            voltages.append(channel.voltage.setpoint)
+        return tuple(voltages)

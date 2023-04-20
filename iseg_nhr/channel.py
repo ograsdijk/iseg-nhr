@@ -22,8 +22,8 @@ class Channel:
     def __init__(self, device: pyvisa.resources.SerialInstrument, channel: int):
         self._device = device
         self._channel = channel
-        self.voltage = Voltage(self._device, self._channel)
-        self.current = Current(self._device, self._channel)
+        self._voltage = Voltage(self._device, self._channel)
+        self._current = Current(self._device, self._channel)
 
     def _query(self, cmd: str) -> str:
         ret = self._device.query(f"{cmd} (@{self._channel})")
@@ -41,6 +41,14 @@ class Channel:
             raise ValueError(
                 f"channel {self._channel} error in command {cmd}, NHR returned {ret}"
             )
+
+    @property
+    def voltage(self) -> Voltage:
+        return self._voltage
+
+    @property
+    def current(self) -> Current:
+        return self._current
 
     @property
     def on_state(self) -> bool:

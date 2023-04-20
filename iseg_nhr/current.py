@@ -15,7 +15,7 @@ class Current:
     def __init__(self, device: pyvisa.resources.SerialInstrument, channel: int):
         self._device = device
         self._channel = channel
-        self.ramp = Ramp(self._device, channel, "CURR")
+        self._ramp = Ramp(self._device, channel, "CURR")
 
     def _query(self, cmd: str) -> str:
         ret = self._device.query(f"{cmd} (@{self._channel})")
@@ -42,6 +42,10 @@ class Current:
                 f"channel {self._channel} current error in command {cmd}, NHR returned"
                 f" {ret}"
             )
+
+    @property
+    def ramp(self) -> Ramp:
+        return self._ramp
 
     @property
     def measured(self) -> float:
