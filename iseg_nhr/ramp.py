@@ -16,17 +16,23 @@ class Ramp:
         self._channel = channel
         self.property_type = property_type
 
-        if property_type == "VOL":
+        if property_type == "VOLT":
             self.unit = "V"
         elif property_type == "CURR":
             self.unit = "A"
         else:
             raise ValueError(
-                f"valid property_type options are VOL and CURR, not {property_type}"
+                f"valid property_type options are VOLT and CURR, not {property_type}"
             )
 
     def _query(self, cmd: str) -> str:
-        return self._device.query(f"{cmd} (@{self._channel})")
+        ret = self._device.query(f"{cmd} (@{self._channel})")
+        if ret != f"{cmd} (@{self._channel})":
+            raise ValueError(
+                f"channel {self._channel} {self.property_type} ramp error in command {cmd}, NHR returned"
+                f" {ret}"
+            )
+        return self._device.read()
 
     def _query_type_conv_unit(
         self,
@@ -42,7 +48,8 @@ class Ramp:
         return value_type(self._query(cmd).strip(_unit))
 
     def _write(self, cmd: str):
-        ret = self._device.query(f"{cmd},(@{self._channel})")
+        cmd = f"{cmd},(@{self._channel})"
+        ret = self._device.query(cmd)
         if ret != cmd:
             raise ValueError(
                 f"channel {self._channel} {self.property_type} ramp error in command"
@@ -58,7 +65,7 @@ class Ramp:
             float: ramp speed [unit/s]
         """
         return self._query_type_conv_unit(
-            f":RAMP:{self.property_type}?", value_type=float
+            f":READ:RAMP:{self.property_type}?", value_type=float
         )
 
     @speed.setter
@@ -69,7 +76,7 @@ class Ramp:
         Args:
             value (float): ramp speed [units/s]
         """
-        self._write(f":RAMP:{self.property_type} {value}")
+        self._write(f":CONF:RAMP:{self.property_type} {value}")
 
     @property
     def speed_up(self) -> float:
@@ -80,7 +87,7 @@ class Ramp:
             float: upward ramp speed [unit/s]
         """
         return self._query_type_conv_unit(
-            f":RAMP:{self.property_type}:UP?", value_type=float
+            f":CONF:RAMP:{self.property_type}:UP?", value_type=float
         )
 
     @speed_up.setter
@@ -91,7 +98,7 @@ class Ramp:
         Returns:
             float: upward ramp speed [unit/s]
         """
-        self._write(f":RAMP:{self.property_type}:UP {value}")
+        self._write(f":CONF:RAMP:{self.property_type}:UP {value}")
 
     @property
     def speed_down(self) -> float:
@@ -102,7 +109,7 @@ class Ramp:
             float: downward ramp speed [unit/s]
         """
         return self._query_type_conv_unit(
-            f":RAMP:{self.property_type}:DOWN?", value_type=float
+            f":CONF:RAMP:{self.property_type}:DOWN?", value_type=float
         )
 
     @speed_down.setter
@@ -113,7 +120,7 @@ class Ramp:
         Returns:
             float: downward ramp speed [unit/s]
         """
-        self._write(f":RAMP:{self.property_type} {value}:DOWN")
+        self._write(f":CONF:RAMP:{self.property_type}:DOWN {value}")
 
     @property
     def min(self) -> float:
@@ -124,7 +131,7 @@ class Ramp:
             float: minimum ramp speed [unit/s]
         """
         return self._query_type_conv_unit(
-            f":RAMP:{self.property_type}:MIN?", value_type=float
+            f":READ:RAMP:{self.property_type}:MIN?", value_type=float
         )
 
     @property
@@ -136,5 +143,5 @@ class Ramp:
             float: maximum ramp speed [units/s]
         """
         return self._query_type_conv_unit(
-            f":RAMP:{self.property_type}:MAX?", value_type=float
+            f":READ:RAMP:{self.property_type}:MAX?", value_type=float
         )

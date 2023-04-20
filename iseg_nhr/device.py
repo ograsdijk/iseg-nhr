@@ -12,14 +12,13 @@ class NHR:
     def __init__(
         self,
         resource_name: str,
-        channels: int = 4,
         baud_rate: int = 9600,
         data_bits: int = 8,
         stop_bits: constants.StopBits = constants.StopBits.one,
         parity: constants.Parity = constants.Parity.none,
     ):
         rm = pyvisa.ResourceManager()
-        self._dev = cast(
+        self._device = cast(
             pyvisa.resources.SerialInstrument,
             rm.open_resource(
                 resource_name=resource_name,
@@ -27,18 +26,24 @@ class NHR:
                 data_bits=data_bits,
                 stop_bits=stop_bits,
                 parity=parity,
+                write_termination="\r\n",
+                read_termination="\r\n"
             ),
         )
-        for ch in range(channels):
-            setattr(self, f"channel{ch}", Channel(self._dev, ch))
+        for ch in range(self.number_channels):
+            setattr(self, f"channel{ch}", Channel(self._device, ch))
 
-        self.supply = Supply(self._dev)
+        self.channels = self.number_channels
+        self.supply = Supply(self._device)
 
     def _query(self, cmd: str) -> str:
-        return self._dev.query(cmd)
+        ret = self._device.query(cmd)
+        if ret != cmd:
+            raise ValueError(f"error in command {cmd}, NHR returned {ret}")
+        return self._device.read()
 
     def _write(self, cmd: str):
-        ret = self._dev.query(cmd)
+        ret = self._device.query(cmd)
         if ret != cmd:
             raise ValueError(f"error in command {cmd}, NHR returned {ret}")
 
@@ -47,10 +52,10 @@ class NHR:
         return self._query("*IDN?")
 
     def clear_status(self):
-        self._query("*CLS")
+        self._write("*CLS")
 
     def reset(self):
-        self._query("*RST")
+        self._write("*RST")
 
     @property
     def operation_complete(self) -> bool:
@@ -64,13 +69,13 @@ class NHR:
         """
         Disable local control of the module
         """
-        self._query("*LLO")
+        self._write("*LLO")
 
     def local(self):
         """
         Activate local control of the module
         """
-        self._query("*GTL")
+        self._write("*GTL")
 
     @property
     def control_register(self) -> Tuple[ControlRegister, ...]:
@@ -104,7 +109,7 @@ class NHR:
         Returns:
             float: temperature [C]
         """
-        return float(self._query(":READ:TEMP?"))
+        return float(self._query(":READ:MOD:TEMP?").strip("C"))
 
     @property
     def number_channels(self) -> int:
@@ -114,7 +119,7 @@ class NHR:
         Returns:
             int: channels
         """
-        return int(self._query(":READ:CHAN?"))
+        return int(self._query(":READ:MOD:CHAN?"))
 
     @property
     def firmware_version(self) -> str:

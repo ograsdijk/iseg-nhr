@@ -1,18 +1,33 @@
 import pyvisa
+from typing import Callable, TypeVar
 
+_T = TypeVar("_T")
 
 class Supply:
     """
     Module supply voltages
     """
     def __init__(self, device: pyvisa.resources.SerialInstrument):
-        self.device = device
+        self._device = device
 
     def _query(self, cmd: str) -> str:
-        return self.device.query(f"{cmd}?")
+        ret = self._device.query(cmd)
+        if ret != cmd:
+            raise ValueError(f"error in command {cmd}, NHR returned {ret}")
+        return self._device.read()
 
     def _write(self, cmd: str):
-        self.device.query(f"{cmd})")
+        ret = self._device.query(f"{cmd})")
+        if ret != cmd:
+            raise ValueError(f"error in command {cmd}, NHR returned {ret}")
+
+    def _query_type_conv_unit(
+        self,
+        cmd: str,
+        value_type: Callable[[str], _T],
+        unit: str = "V",
+    ) -> _T:
+        return value_type(self._query(cmd).strip(unit))
 
     @property
     def p24v(self) -> float:
@@ -22,7 +37,7 @@ class Supply:
         Returns:
             float: voltage [V]
         """
-        return float(self._query(":READ:SUP:P24V"))
+        return float(self._query_type_conv_unit(":READ:MOD:SUP:P24V?", value_type = float))
 
     @property
     def n24v(self) -> float:
@@ -32,7 +47,7 @@ class Supply:
         Returns:
             float: voltage [V]
         """
-        return float(self._query(":READ:SUP:N24V"))
+        return float(self._query_type_conv_unit(":READ:MOD:SUP:N24V?", value_type = float))
 
     @property
     def p5v(self) -> float:
@@ -42,7 +57,7 @@ class Supply:
         Returns:
             float: voltage [V]
         """
-        return float(self._query(":READ:SUP:P5V"))
+        return float(self._query_type_conv_unit(":READ:MOD:SUP:P5V?", value_type = float))
 
     @property
     def p3v(self) -> float:
@@ -52,7 +67,7 @@ class Supply:
         Returns:
             float: voltage [V]
         """
-        return float(self._query(":READ:SUP:P3V"))
+        return float(self._query_type_conv_unit(":READ:MOD:SUP:P3V?", value_type = float))
 
     @property
     def p12v(self) -> float:
@@ -62,7 +77,7 @@ class Supply:
         Returns:
             float: voltage [V]
         """
-        return float(self._query(":READ:SUP:P12V"))
+        return float(self._query_type_conv_unit(":READ:MOD:SUP:P12V?", value_type = float))
 
     @property
     def n12v(self) -> float:
@@ -72,4 +87,4 @@ class Supply:
         Returns:
             float: voltage [V]
         """
-        return float(self._query(":READ:SUP:N12V"))
+        return float(self._query_type_conv_unit(":READ:MOD:SUP:N12V?", value_type = float))

@@ -26,10 +26,17 @@ class Channel:
         self.current = Current(self._device, self._channel)
 
     def _query(self, cmd: str) -> str:
-        return self._device.query(f"{cmd} (@{self._channel})")
+        ret = self._device.query(f"{cmd} (@{self._channel})")
+        if ret != f"{cmd} (@{self._channel})":
+            raise ValueError(
+                f"channel {self._channel} error in command {cmd}, NHR returned"
+                f" {ret}"
+            )
+        return self._device.read()
 
     def _write(self, cmd: str):
-        ret = self._device.query(f"{cmd},(@{self._channel})")
+        cmd = f"{cmd},(@{self._channel})"
+        ret = self._device.query(cmd)
         if ret != cmd:
             raise ValueError(
                 f"channel {self._channel} error in command {cmd}, NHR returned {ret}"
@@ -119,6 +126,7 @@ class Channel:
     def output_mode(self) -> int:
         return int(self._query(":CONF:OUTP:MODE?"))
 
+    @property
     def output_mode_list(self) -> str:
         return self._query(":CONF:OUTP:MODE:LIST?")
 

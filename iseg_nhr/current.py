@@ -14,11 +14,17 @@ class Current:
 
     def __init__(self, device: pyvisa.resources.SerialInstrument, channel: int):
         self._device = device
-        self.channel = channel
+        self._channel = channel
         self.ramp = Ramp(self._device, channel, "CURR")
 
     def _query(self, cmd: str) -> str:
-        return self._device.query(f"{cmd} (@{self.channel})")
+        ret = self._device.query(f"{cmd} (@{self._channel})")
+        if ret != f"{cmd} (@{self._channel})":
+            raise ValueError(
+                f"channel {self._channel} current error in command {cmd}, NHR returned"
+                f" {ret}"
+            )
+        return self._device.read()
 
     def _query_type_conv_unit(
         self,
@@ -29,10 +35,11 @@ class Current:
         return value_type(self._query(cmd).strip(unit))
 
     def _write(self, cmd: str):
-        ret = self._device.query(f"{cmd},(@{self.channel})")
+        cmd = f"{cmd},(@{self._channel})"
+        ret = self._device.query(cmd)
         if ret != cmd:
             raise ValueError(
-                f"channel {self.channel} current error in command {cmd}, NHR returned"
+                f"channel {self._channel} current error in command {cmd}, NHR returned"
                 f" {ret}"
             )
 
