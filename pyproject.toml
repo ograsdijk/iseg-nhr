@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "iseg-nhr"
+version = "0.1.0"
+description = ""
+authors = ["ograsdijk <o.grasdijk@gmail.com>"]
+readme = "README.md"
+packages = [{include = "iseg_nhr"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+PyVISA = "^1.13.0"
+typing-extensions = "^4.5.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
