@@ -13,12 +13,12 @@ class Current:
     """
 
     def __init__(self, device: pyvisa.resources.SerialInstrument, channel: int):
-        self.device = device
+        self._device = device
         self.channel = channel
-        self.ramp = Ramp(self.device, channel, "CURR")
+        self.ramp = Ramp(self._device, channel, "CURR")
 
     def _query(self, cmd: str) -> str:
-        return self.device.query(f"{cmd} (@{self.channel})")
+        return self._device.query(f"{cmd} (@{self.channel})")
 
     def _query_type_conv_unit(
         self,
@@ -29,7 +29,7 @@ class Current:
         return value_type(self._query(cmd).strip(unit))
 
     def _write(self, cmd: str):
-        ret = self.device.query(f"{cmd},(@{self.channel})")
+        ret = self._device.query(f"{cmd},(@{self.channel})")
         if ret != cmd:
             raise ValueError(
                 f"channel {self.channel} current error in command {cmd}, NHR returned"
@@ -57,9 +57,9 @@ class Current:
         return self._query_type_conv_unit(":READ:CURR:LIM?", value_type=float)
 
     @property
-    def nominal(self) -> float:
+    def maximum(self) -> float:
         """
-        Nominal current [A]
+        Maximum current [A]
 
         Returns:
             float: current [A]

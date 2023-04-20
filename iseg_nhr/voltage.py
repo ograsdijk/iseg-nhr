@@ -13,12 +13,12 @@ class Voltage:
     """
 
     def __init__(self, device: pyvisa.resources.SerialInstrument, channel: int):
-        self.device = device
-        self.channel = channel
-        self.ramp = Ramp(self.device, channel, "VOL")
+        self._device = device
+        self._channel = channel
+        self.ramp = Ramp(self._device, channel, "VOL")
 
     def _query(self, cmd: str) -> str:
-        return self.device.query(f"{cmd} (@{self.channel})")
+        return self._device.query(f"{cmd} (@{self._channel})")
 
     def _query_type_conv_unit(
         self,
@@ -29,10 +29,10 @@ class Voltage:
         return value_type(self._query(cmd).strip(unit))
 
     def _write(self, cmd: str):
-        ret = self.device.query(f"{cmd},(@{self.channel})")
+        ret = self._device.query(f"{cmd},(@{self._channel})")
         if ret != cmd:
             raise ValueError(
-                f"channel {self.channel} voltage error in command {cmd}, NHR returned"
+                f"channel {self._channel} voltage error in command {cmd}, NHR returned"
                 f" {ret}"
             )
 
@@ -77,9 +77,9 @@ class Voltage:
         return self._query_type_conv_unit(":READ:VOLT:LIM?", value_type=float)
 
     @property
-    def nominal(self) -> float:
+    def maximum(self) -> float:
         """
-        Output voltage limit
+        Maximum output voltage
 
         Returns:
             float: voltage [V]

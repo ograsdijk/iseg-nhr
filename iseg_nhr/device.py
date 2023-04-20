@@ -12,27 +12,33 @@ class NHR:
     def __init__(
         self,
         resource_name: str,
+        channels: int = 4,
         baud_rate: int = 9600,
         data_bits: int = 8,
         stop_bits: constants.StopBits = constants.StopBits.one,
         parity: constants.Parity = constants.Parity.none,
     ):
-        self.rm = pyvisa.ResourceManager()
-        self.dev = cast(
+        rm = pyvisa.ResourceManager()
+        self._dev = cast(
             pyvisa.resources.SerialInstrument,
-            self.rm.open_resource(resource_name=resource_name),
+            rm.open_resource(
+                resource_name=resource_name,
+                baud_rate=baud_rate,
+                data_bits=data_bits,
+                stop_bits=stop_bits,
+                parity=parity,
+            ),
         )
-        self.channel1 = Channel(self.dev, 1)
-        self.channel2 = Channel(self.dev, 2)
-        self.channel3 = Channel(self.dev, 3)
-        self.channel4 = Channel(self.dev, 4)
-        self.supply = Supply(self.dev)
+        for ch in range(channels):
+            setattr(self, f"channel{ch}", Channel(self._dev, ch))
+
+        self.supply = Supply(self._dev)
 
     def _query(self, cmd: str) -> str:
-        return self.dev.query(cmd)
+        return self._dev.query(cmd)
 
     def _write(self, cmd: str):
-        ret = self.dev.query(cmd)
+        ret = self._dev.query(cmd)
         if ret != cmd:
             raise ValueError(f"error in command {cmd}, NHR returned {ret}")
 
@@ -47,18 +53,24 @@ class NHR:
         self._query("*RST")
 
     @property
+    def operation_complete(self) -> bool:
+        return bool(int(self._query("*OPC?")))
+
+    @property
     def instruction_set(self) -> str:
         return self._query("*INSTR?")
 
     def lockout(self):
+        """
+        Disable local control of the module
+        """
         self._query("*LLO")
 
     def local(self):
+        """
+        Activate local control of the module
+        """
         self._query("*GTL")
-
-    @property
-    def operation_complete(self) -> bool:
-        return bool(int(self._query("*OPC?")))
 
     @property
     def control_register(self) -> Tuple[ControlRegister, ...]:
@@ -79,18 +91,33 @@ class NHR:
         return tuple([EventRegister(bit) for bit in set_bits])
 
     def event_clear(self):
+        """
+        Clear the module event register
+        """
         self._write(":CONF:EV CLEAR")
 
     @property
     def temperature(self) -> float:
+        """
+        Module temperature [C]
+
+        Returns:
+            float: temperature [C]
+        """
         return float(self._query(":READ:TEMP?"))
 
     @property
     def number_channels(self) -> int:
+        """
+        Number of channels of the module
+
+        Returns:
+            int: channels
+        """
         return int(self._query(":READ:CHAN?"))
 
     @property
-    def firmware_name(self) -> str:
+    def firmware_version(self) -> str:
         return self._query(":READ:FIRM:NAME?")
 
     @property

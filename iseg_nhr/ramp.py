@@ -1,4 +1,4 @@
-from typing import Callable, Optional, TypeVar, cast
+from typing import Callable, Optional, TypeVar
 
 import pyvisa
 
@@ -12,8 +12,8 @@ class Ramp:
         channel: int,
         property_type: str,
     ):
-        self.device = device
-        self.channel = channel
+        self._device = device
+        self._channel = channel
         self.property_type = property_type
 
         if property_type == "VOL":
@@ -26,7 +26,7 @@ class Ramp:
             )
 
     def _query(self, cmd: str) -> str:
-        return self.device.query(f"{cmd} (@{self.channel})")
+        return self._device.query(f"{cmd} (@{self._channel})")
 
     def _query_type_conv_unit(
         self,
@@ -42,15 +42,15 @@ class Ramp:
         return value_type(self._query(cmd).strip(_unit))
 
     def _write(self, cmd: str):
-        ret = self.device.query(f"{cmd},(@{self.channel})")
+        ret = self._device.query(f"{cmd},(@{self._channel})")
         if ret != cmd:
             raise ValueError(
-                f"channel {self.channel} {self.property_type} ramp error in command"
+                f"channel {self._channel} {self.property_type} ramp error in command"
                 f" {cmd}, NHR returned {ret}"
             )
 
     @property
-    def ramp_speed(self) -> float:
+    def speed(self) -> float:
         """
         Ramp speed in unit/s.
 
@@ -61,8 +61,8 @@ class Ramp:
             f":RAMP:{self.property_type}?", value_type=float
         )
 
-    @ramp_speed.setter
-    def ramp_speed(self, value: float):
+    @speed.setter
+    def speed(self, value: float):
         """
         Ramp speed in unit/s.
 
@@ -72,7 +72,7 @@ class Ramp:
         self._write(f":RAMP:{self.property_type} {value}")
 
     @property
-    def ramp_speed_up(self) -> float:
+    def speed_up(self) -> float:
         """
         Upwards ramp speed in unit/s.
 
@@ -83,8 +83,8 @@ class Ramp:
             f":RAMP:{self.property_type}:UP?", value_type=float
         )
 
-    @ramp_speed_up.setter
-    def ramp_speed_up(self, value: float):
+    @speed_up.setter
+    def speed_up(self, value: float):
         """
         Upwards ramp speed in unit/s.
 
@@ -94,7 +94,7 @@ class Ramp:
         self._write(f":RAMP:{self.property_type}:UP {value}")
 
     @property
-    def ramp_speed_down(self) -> float:
+    def speed_down(self) -> float:
         """
         Downwards ramp speed in unit/s.
 
@@ -105,8 +105,8 @@ class Ramp:
             f":RAMP:{self.property_type}:DOWN?", value_type=float
         )
 
-    @ramp_speed_down.setter
-    def ramp_speed_down(self, value: float):
+    @speed_down.setter
+    def speed_down(self, value: float):
         """
         Downwards ramp speed in unit/s.
 
@@ -116,7 +116,7 @@ class Ramp:
         self._write(f":RAMP:{self.property_type} {value}:DOWN")
 
     @property
-    def ramp_min(self) -> float:
+    def min(self) -> float:
         """
         Minimum ramp speed in unit/s.
 
@@ -128,7 +128,7 @@ class Ramp:
         )
 
     @property
-    def ramp_max(self) -> float:
+    def max(self) -> float:
         """
         Maximum ramp speed in unit/s
 

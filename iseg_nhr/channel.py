@@ -1,4 +1,4 @@
-from enum import Enum, auto
+from enum import IntEnum
 from typing import Dict, Tuple
 
 import pyvisa
@@ -13,26 +13,26 @@ from .register import (
 from .voltage import Voltage
 
 
-class Polarity(Enum):
-    NEGATIVE = auto()
-    POSITIVE = auto()
+class Polarity(IntEnum):
+    NEGATIVE = -1
+    POSITIVE = +1
 
 
 class Channel:
     def __init__(self, device: pyvisa.resources.SerialInstrument, channel: int):
-        self.device = device
-        self.channel = channel
-        self.voltage = Voltage(self.device, self.channel)
-        self.current = Current(self.device, self.channel)
+        self._device = device
+        self._channel = channel
+        self.voltage = Voltage(self._device, self._channel)
+        self.current = Current(self._device, self._channel)
 
     def _query(self, cmd: str) -> str:
-        return self.device.query(f"{cmd} (@{self.channel})")
+        return self._device.query(f"{cmd} (@{self._channel})")
 
     def _write(self, cmd: str):
-        ret = self.device.query(f"{cmd},(@{self.channel})")
+        ret = self._device.query(f"{cmd},(@{self._channel})")
         if ret != cmd:
             raise ValueError(
-                f"channel {self.channel} error in command {cmd}, NHR returned {ret}"
+                f"channel {self._channel} error in command {cmd}, NHR returned {ret}"
             )
 
     @property
@@ -50,12 +50,24 @@ class Channel:
 
     @property
     def emergency(self) -> bool:
+        """
+        Channel emergency
+
+        Returns:
+            bool: channel emergency
+        """
         return bool(int(self._query(":READ:VOLT:EMCY?")))
 
     def emergency_clear(self):
+        """
+        Clear channel emergency
+        """
         self._write(":VOLT EMCY_CLR")
 
     def event_clear(self):
+        """
+        Clear channel events
+        """
         self._write(":EV CLEAR")
 
     @property
@@ -85,8 +97,8 @@ class Channel:
             return Polarity.POSITIVE
         else:
             raise ValueError(
-                f"channel {self.channel} expected polarity return to be 'n' or 'p', not"
-                f" {polarity}"
+                f"channel {self._channel} expected polarity return to be 'n' or 'p',"
+                f" not {polarity}"
             )
 
     @polarity.setter
@@ -94,7 +106,7 @@ class Channel:
         voltage = self.voltage.measured
         if voltage != 0:
             raise ValueError(
-                f"channel {self.channel} can't reverse polarity with non-zero voltage"
+                f"channel {self._channel} can't reverse polarity with non-zero voltage"
                 f" {voltage} V"
             )
         self._write(f":CONF:OUTP:POL {polarity.name[0].lower()}")
