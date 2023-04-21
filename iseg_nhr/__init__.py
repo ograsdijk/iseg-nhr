@@ -1,4 +1,4 @@
 from .channel import Polarity
-from .device import NHR
+from .module import NHR
 
 __all__ = ["NHR", "Polarity"]
