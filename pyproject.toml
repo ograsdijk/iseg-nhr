@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "iseg-nhr"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python interface for an ISEG NHR high-voltage power supply"
 authors = ["ograsdijk <o.grasdijk@gmail.com>"]
 readme = "README.md"
