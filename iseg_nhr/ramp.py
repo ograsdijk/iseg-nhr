@@ -29,8 +29,8 @@ class Ramp:
         ret = self._device.query(f"{cmd} (@{self._channel})")
         if ret != f"{cmd} (@{self._channel})":
             raise ValueError(
-                f"channel {self._channel} {self.property_type} ramp error in command {cmd}, NHR returned"
-                f" {ret}"
+                f"channel {self._channel} {self.property_type} ramp error in command"
+                f" {cmd}, NHR returned {ret}"
             )
         return self._device.read()
 

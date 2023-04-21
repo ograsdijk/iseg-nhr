@@ -5,7 +5,7 @@ description = "Python interface for an ISEG NHR high-voltage power supply"
 authors = ["ograsdijk <o.grasdijk@gmail.com>"]
 readme = "README.md"
 packages = [{include = "iseg_nhr"}]
-licence = "MIT"
+license = "MIT"
 repository = "https://github.com/ograsdijk/iseg-nhr"
 
 [tool.poetry.dependencies]

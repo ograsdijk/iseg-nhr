@@ -1,12 +1,15 @@
-import pyvisa
 from typing import Callable, TypeVar
 
+import pyvisa
+
 _T = TypeVar("_T")
+
 
 class Supply:
     """
     Module supply voltages
     """
+
     def __init__(self, device: pyvisa.resources.SerialInstrument):
         self._device = device
 
@@ -37,7 +40,9 @@ class Supply:
         Returns:
             float: voltage [V]
         """
-        return float(self._query_type_conv_unit(":READ:MOD:SUP:P24V?", value_type = float))
+        return float(
+            self._query_type_conv_unit(":READ:MOD:SUP:P24V?", value_type=float)
+        )
 
     @property
     def n24v(self) -> float:
@@ -47,7 +52,9 @@ class Supply:
         Returns:
             float: voltage [V]
         """
-        return float(self._query_type_conv_unit(":READ:MOD:SUP:N24V?", value_type = float))
+        return float(
+            self._query_type_conv_unit(":READ:MOD:SUP:N24V?", value_type=float)
+        )
 
     @property
     def p5v(self) -> float:
@@ -57,7 +64,7 @@ class Supply:
         Returns:
             float: voltage [V]
         """
-        return float(self._query_type_conv_unit(":READ:MOD:SUP:P5V?", value_type = float))
+        return float(self._query_type_conv_unit(":READ:MOD:SUP:P5V?", value_type=float))
 
     @property
     def p3v(self) -> float:
@@ -67,7 +74,7 @@ class Supply:
         Returns:
             float: voltage [V]
         """
-        return float(self._query_type_conv_unit(":READ:MOD:SUP:P3V?", value_type = float))
+        return float(self._query_type_conv_unit(":READ:MOD:SUP:P3V?", value_type=float))
 
     @property
     def p12v(self) -> float:
@@ -77,7 +84,9 @@ class Supply:
         Returns:
             float: voltage [V]
         """
-        return float(self._query_type_conv_unit(":READ:MOD:SUP:P12V?", value_type = float))
+        return float(
+            self._query_type_conv_unit(":READ:MOD:SUP:P12V?", value_type=float)
+        )
 
     @property
     def n12v(self) -> float:
@@ -87,4 +96,6 @@ class Supply:
         Returns:
             float: voltage [V]
         """
-        return float(self._query_type_conv_unit(":READ:MOD:SUP:N12V?", value_type = float))
+        return float(
+            self._query_type_conv_unit(":READ:MOD:SUP:N12V?", value_type=float)
+        )

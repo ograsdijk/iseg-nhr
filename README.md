@@ -1,5 +1,8 @@
 # iseg-nhr
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)  
+[![Python versions on PyPI](https://img.shields.io/pypi/pyversions/iseg-nhr.svg)](https://pypi.python.org/pypi/iseg-nhr/)
+[![iseg-nhr version on PyPI](https://img.shields.io/pypi/v/iseg-nhr.svg "iseg-nhr on PyPI")](https://pypi.python.org/pypi/iseg-nhr/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 Python interface for an ISEG NHR high-voltage power supply
 
 ## Example
@@ -12,6 +15,7 @@ polarity = psu.channel0.voltage.polarity
 print(polarity)
 
 psu.channel0.voltage.setpoint = 1_000
+psu.channel0.on()
 print(psu.channel0.voltage.measured)
 print(psu.channel0.current.measured)
 ```
@@ -25,7 +29,7 @@ The main NHR class has the following attributes and methods:
   `Supply` class containing the supply voltages 
 * `identity`  
   *IDN?; model, serial number etc.
-* `clear_status()`  
+* `status_clear()`  
   *CLS
 * `reset`  
   *RST
@@ -57,6 +61,16 @@ The main NHR class has the following attributes and methods:
   config mode, either normal or configuration mode
 * `config_save`  
   save current configuration
+* `voltages`  
+  return the measured voltage of each channel
+* `currents`  
+  return the measured current of each channel
+* `setpoints`  
+  return the setpoint voltage of each channel
+* `on([0,1])`  
+  turn on channels 0 and 1
+* `off([0,1])`  
+  turn off channels 0 and 1
 
 `Channel`
 * `voltage`  

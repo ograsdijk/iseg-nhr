@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Tuple, cast, Sequence
+from typing import Sequence, Tuple, cast
 
 import pyvisa
 from pyvisa import constants
@@ -9,10 +9,13 @@ from .channel import Channel
 from .register import ControlRegister, EventRegister, StatusRegister, get_set_bits
 from .supply import Supply
 
+
 def _create_channel(module: NHR, channel_id: int):
     def channel_property(self: NHR) -> Channel:
         return getattr(self, f"_channel{channel_id}")
+
     return channel_property
+
 
 class NHR:
     def __init__(
@@ -33,11 +36,10 @@ class NHR:
                 stop_bits=stop_bits,
                 parity=parity,
                 write_termination="\r\n",
-                read_termination="\r\n"
+                read_termination="\r\n",
             ),
         )
 
-        
         self._channels = self.number_channels
         for ch in range(self._channels):
             setattr(self, f"_channel{ch}", Channel(self._device, ch))
@@ -172,7 +174,7 @@ class NHR:
             channel.off()
 
     @property
-    def voltages(self) -> Tuple[float]:
+    def voltages(self) -> Tuple[float, ...]:
         voltages = []
         for ch in range(self._channels):
             channel = cast(Channel, getattr(self, f"channel{ch}"))
@@ -180,7 +182,7 @@ class NHR:
         return tuple(voltages)
 
     @property
-    def currents(self) -> Tuple[float]:
+    def currents(self) -> Tuple[float, ...]:
         currents = []
         for ch in range(self._channels):
             channel = cast(Channel, getattr(self, f"channel{ch}"))
@@ -188,7 +190,7 @@ class NHR:
         return tuple(currents)
 
     @property
-    def setpoints(self) -> Tuple[float]:
+    def setpoints(self) -> Tuple[float, ...]:
         voltages = []
         for ch in range(self._channels):
             channel = cast(Channel, getattr(self, f"channel{ch}"))
