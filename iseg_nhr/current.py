@@ -1,8 +1,7 @@
 from typing import Callable, TypeVar
 
-import pyvisa
-
 from .ramp import Ramp
+from .transport import DeviceTransport, remove_suffix
 
 _T = TypeVar("_T")
 
@@ -12,7 +11,7 @@ class Current:
     Channel current
     """
 
-    def __init__(self, device: pyvisa.resources.SerialInstrument, channel: int):
+    def __init__(self, device: DeviceTransport, channel: int):
         self._device = device
         self._channel = channel
         self._ramp = Ramp(self._device, channel, "CURR")
@@ -32,7 +31,7 @@ class Current:
         value_type: Callable[[str], _T],
         unit: str = "A",
     ) -> _T:
-        return value_type(self._query(cmd).strip(unit))
+        return value_type(remove_suffix(self._query(cmd), unit))
 
     def _write(self, cmd: str):
         cmd = f"{cmd},(@{self._channel})"

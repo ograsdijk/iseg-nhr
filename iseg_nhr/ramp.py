@@ -1,6 +1,6 @@
 from typing import Callable, Optional, TypeVar
 
-import pyvisa
+from .transport import DeviceTransport, remove_suffix
 
 _T = TypeVar("_T")
 
@@ -8,7 +8,7 @@ _T = TypeVar("_T")
 class Ramp:
     def __init__(
         self,
-        device: pyvisa.resources.SerialInstrument,
+        device: DeviceTransport,
         channel: int,
         property_type: str,
     ):
@@ -45,7 +45,7 @@ class Ramp:
         else:
             _unit = unit
 
-        return value_type(self._query(cmd).strip(_unit))
+        return value_type(remove_suffix(self._query(cmd), _unit))
 
     def _write(self, cmd: str):
         cmd = f"{cmd},(@{self._channel})"

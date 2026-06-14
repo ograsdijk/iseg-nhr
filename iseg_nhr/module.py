@@ -1,51 +1,73 @@
 from __future__ import annotations
 
-from typing import Sequence, Tuple, cast
+from typing import Optional, Sequence, Tuple
 
-import pyvisa
-from pyvisa import constants
+import serial
 
 from .channel import Channel
 from .register import ControlRegister, EventRegister, StatusRegister, get_set_bits
 from .supply import Supply
-
-
-def _create_channel(module: NHR, channel_id: int):
-    def channel_property(self: NHR) -> Channel:
-        return getattr(self, f"_channel{channel_id}")
-
-    return channel_property
+from .transport import DeviceTransport, SerialTransport
 
 
 class NHR:
     def __init__(
         self,
-        resource_name: str,
+        port: Optional[str] = None,
         baud_rate: int = 9600,
-        data_bits: int = 8,
-        stop_bits: constants.StopBits = constants.StopBits.one,
-        parity: constants.Parity = constants.Parity.none,
+        data_bits: int = serial.EIGHTBITS,
+        stop_bits: float = serial.STOPBITS_ONE,
+        parity: str = serial.PARITY_NONE,
+        timeout: float = 1.0,
+        write_timeout: float = 1.0,
+        transport: DeviceTransport | None = None,
+        resource_name: Optional[str] = None,
     ):
-        rm = pyvisa.ResourceManager()
-        self._device = cast(
-            pyvisa.resources.SerialInstrument,
-            rm.open_resource(
-                resource_name=resource_name,
+        if port is None:
+            port = resource_name
+        if transport is None and port is None:
+            raise TypeError("missing required argument: 'port'")
+
+        self._device = (
+            transport
+            if transport is not None
+            else SerialTransport(
+                port=port,
                 baud_rate=baud_rate,
                 data_bits=data_bits,
                 stop_bits=stop_bits,
                 parity=parity,
-                write_termination="\r\n",
-                read_termination="\r\n",
-            ),
+                timeout=timeout,
+                write_timeout=write_timeout,
+            )
         )
 
         self._channels = self.number_channels
-        for ch in range(self._channels):
-            setattr(self, f"_channel{ch}", Channel(self._device, ch))
-            setattr(NHR, f"channel{ch}", property(_create_channel(self, ch)))
+        self._channel_instances = tuple(
+            Channel(self._device, ch) for ch in range(self._channels)
+        )
 
         self._supply = Supply(self._device)
+
+    def close(self):
+        self._device.close()
+
+    def __enter__(self) -> NHR:
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
+    def __getattr__(self, name: str):
+        if name.startswith("channel"):
+            channel_id = name.removeprefix("channel")
+            if channel_id.isdecimal():
+                index = int(channel_id)
+                if index < self._channels:
+                    return self._channel_instances[index]
+        raise AttributeError(
+            f"{type(self).__name__!r} object has no attribute {name!r}"
+        )
 
     def _query(self, cmd: str) -> str:
         ret = self._device.query(cmd)
@@ -159,25 +181,26 @@ class NHR:
     def config_save(self):
         self._write(":SYS:USER:CONF SAVE")
 
+    def channel(self, channel: int) -> Channel:
+        if channel < 0 or channel >= self._channels:
+            raise ValueError("channel index exceeds module channel number")
+        return self._channel_instances[channel]
+
     def on(self, channels: Sequence[int]):
         for ch in channels:
-            if ch >= self._channels:
-                raise ValueError("channel index exceeds module channel number")
-            channel = cast(Channel, getattr(self, f"channel{ch}"))
+            channel = self.channel(ch)
             channel.on()
 
     def off(self, channels: Sequence[int]):
         for ch in channels:
-            if ch >= self._channels:
-                raise ValueError("channel index exceeds module channel number")
-            channel = cast(Channel, getattr(self, f"channel{ch}"))
+            channel = self.channel(ch)
             channel.off()
 
     @property
     def voltages(self) -> Tuple[float, ...]:
         voltages = []
         for ch in range(self._channels):
-            channel = cast(Channel, getattr(self, f"channel{ch}"))
+            channel = self._channel_instances[ch]
             voltages.append(channel.voltage.measured)
         return tuple(voltages)
 
@@ -185,7 +208,7 @@ class NHR:
     def currents(self) -> Tuple[float, ...]:
         currents = []
         for ch in range(self._channels):
-            channel = cast(Channel, getattr(self, f"channel{ch}"))
+            channel = self._channel_instances[ch]
             currents.append(channel.current.measured)
         return tuple(currents)
 
@@ -193,6 +216,6 @@ class NHR:
     def setpoints(self) -> Tuple[float, ...]:
         voltages = []
         for ch in range(self._channels):
-            channel = cast(Channel, getattr(self, f"channel{ch}"))
+            channel = self._channel_instances[ch]
             voltages.append(channel.voltage.setpoint)
         return tuple(voltages)

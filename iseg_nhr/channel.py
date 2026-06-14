@@ -1,8 +1,6 @@
 from enum import IntEnum
 from typing import Dict, Tuple
 
-import pyvisa
-
 from .current import Current
 from .register import (
     ChannelControlRegister,
@@ -10,6 +8,7 @@ from .register import (
     ChannelStatusRegister,
     get_set_bits,
 )
+from .transport import DeviceTransport
 from .voltage import Voltage
 
 
@@ -19,7 +18,7 @@ class Polarity(IntEnum):
 
 
 class Channel:
-    def __init__(self, device: pyvisa.resources.SerialInstrument, channel: int):
+    def __init__(self, device: DeviceTransport, channel: int):
         self._device = device
         self._channel = channel
         self._voltage = Voltage(self._device, self._channel)
@@ -139,7 +138,7 @@ class Channel:
 
     @property
     def inhibit(self) -> str:
-        inhibit = int(self._query("CONF:INH:ACT?"))
+        inhibit = int(self._query(":CONF:INH:ACT?"))
         return self.inhibit_options[inhibit]
 
     @inhibit.setter
@@ -149,7 +148,7 @@ class Channel:
                 f"inhibit option {value} not available, choose from"
                 f" {self.inhibit_options}"
             )
-        self._write(f"CONF:INH:ACT {value}")
+        self._write(f":CONF:INH:ACT {value}")
 
     @property
     def inhibit_options(self) -> Dict[int, str]:
