@@ -1,30 +1,54 @@
 # iseg-nhr
 [![Python versions on PyPI](https://img.shields.io/pypi/pyversions/iseg-nhr.svg)](https://pypi.python.org/pypi/iseg-nhr/)
 [![iseg-nhr version on PyPI](https://img.shields.io/pypi/v/iseg-nhr.svg "iseg-nhr on PyPI")](https://pypi.python.org/pypi/iseg-nhr/)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![CI](https://github.com/ograsdijk/iseg-nhr/actions/workflows/ci.yml/badge.svg)](https://github.com/ograsdijk/iseg-nhr/actions/workflows/ci.yml)
+[![Code style: Ruff](https://img.shields.io/badge/code%20style-ruff-46aef7.svg)](https://docs.astral.sh/ruff/)
 
-Python interface for an ISEG NHR high-voltage power supply
+Python interface for an ISEG NHR high-voltage power supply over a serial port.
+
+Requires Python 3.11 or newer.
+
+## Installation
+
+```bash
+pip install iseg-nhr
+```
+
+## Development
+
+```bash
+uv sync --dev
+uv run ruff format .
+uv run ruff check .
+uv run pytest
+uv build
+```
 
 ## Example
 ```Python
 from iseg_nhr import NHR, Polarity
 
-psu = NHR("COM3")
+with NHR("COM3") as psu:
+    channel = psu.channel(0)
 
-polarity = psu.channel0.voltage.polarity
-print(polarity)
+    polarity = channel.voltage.polarity
+    print(polarity)
 
-psu.channel0.voltage.setpoint = 1_000
-psu.channel0.on()
-print(psu.channel0.voltage.measured)
-print(psu.channel0.current.measured)
+    channel.voltage.setpoint = 1_000
+    channel.on()
+    print(channel.voltage.measured)
+    print(channel.current.measured)
 ```
+
+Dynamic channel attributes such as `psu.channel0` are also supported for compatibility.
 
 ## Implementation
 The main NHR class has the following attributes and methods:  
 `NHR`
+* `channel(index)`  
+  return the `Channel` for a zero-based channel index
 * `channel{i}`  
-  `Channel` class specifying all options for a specific channel
+  dynamic `Channel` attribute for compatibility, for example `channel0`
 * `supply`  
   `Supply` class containing the supply voltages 
 * `identity`  
@@ -61,6 +85,8 @@ The main NHR class has the following attributes and methods:
   config mode, either normal or configuration mode
 * `config_save`  
   save current configuration
+* `close()`  
+  close the serial connection
 * `voltages`  
   return the measured voltage of each channel
 * `currents`  
@@ -121,7 +147,7 @@ The main NHR class has the following attributes and methods:
   voltage limit
 * `maximum`  
   nominal output voltage
-* `maximum`  
+* `mode`  
   voltage mode with polarity sign
 * `mode_list`  
   voltage mode options
