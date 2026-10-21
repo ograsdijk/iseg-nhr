@@ -7,7 +7,12 @@ import serial
 from .channel import Channel
 from .register import ControlRegister, EventRegister, StatusRegister, get_set_bits
 from .supply import Supply
-from .transport import DeviceTransport, SerialTransport
+from .transport import (
+    DeviceTransport,
+    SerialTransport,
+    synchronized,
+    synchronized_transport,
+)
 
 
 class NHR:
@@ -28,7 +33,7 @@ class NHR:
         if transport is None and port is None:
             raise TypeError("missing required argument: 'port'")
 
-        self._device = (
+        self._device = synchronized_transport(
             transport
             if transport is not None
             else SerialTransport(
@@ -42,12 +47,21 @@ class NHR:
             )
         )
 
-        self._channels = self.number_channels
-        self._channel_instances = tuple(
-            Channel(self._device, ch) for ch in range(self._channels)
-        )
+        try:
+            self._channels = self.number_channels
+            self._channel_instances = tuple(
+                Channel(self._device, ch) for ch in range(self._channels)
+            )
 
-        self._supply = Supply(self._device)
+            self._supply = Supply(self._device)
+        except Exception:
+            # An injected transport remains the caller's responsibility on failure.
+            if transport is None:
+                try:
+                    self._device.close()
+                except Exception:
+                    pass  # Preserve the original initialization error.
+            raise
 
     def close(self):
         self._device.close()
@@ -69,16 +83,16 @@ class NHR:
             f"{type(self).__name__!r} object has no attribute {name!r}"
         )
 
+    @synchronized
     def _query(self, cmd: str) -> str:
         ret = self._device.query(cmd)
         if ret != cmd:
             raise ValueError(f"error in command {cmd}, NHR returned {ret}")
         return self._device.read()
 
+    @synchronized
     def _write(self, cmd: str):
-        ret = self._device.query(cmd)
-        if ret != cmd:
-            raise ValueError(f"error in command {cmd}, NHR returned {ret}")
+        self._device.write_command(cmd)
 
     @property
     def supply(self) -> Supply:

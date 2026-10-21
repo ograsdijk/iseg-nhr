@@ -1,6 +1,11 @@
 from typing import Callable, Optional, TypeVar
 
-from .transport import DeviceTransport, remove_suffix
+from .transport import (
+    DeviceTransport,
+    remove_suffix,
+    synchronized,
+    synchronized_transport,
+)
 
 _T = TypeVar("_T")
 
@@ -12,7 +17,7 @@ class Ramp:
         channel: int,
         property_type: str,
     ):
-        self._device = device
+        self._device = synchronized_transport(device)
         self._channel = channel
         self.property_type = property_type
 
@@ -25,6 +30,7 @@ class Ramp:
                 f"valid property_type options are VOLT and CURR, not {property_type}"
             )
 
+    @synchronized
     def _query(self, cmd: str) -> str:
         ret = self._device.query(f"{cmd} (@{self._channel})")
         if ret != f"{cmd} (@{self._channel})":
@@ -47,14 +53,9 @@ class Ramp:
 
         return value_type(remove_suffix(self._query(cmd), _unit))
 
+    @synchronized
     def _write(self, cmd: str):
-        cmd = f"{cmd},(@{self._channel})"
-        ret = self._device.query(cmd)
-        if ret != cmd:
-            raise ValueError(
-                f"channel {self._channel} {self.property_type} ramp error in command"
-                f" {cmd}, NHR returned {ret}"
-            )
+        self._device.write_command(f"{cmd},(@{self._channel})")
 
     @property
     def speed(self) -> float:

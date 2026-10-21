@@ -1,4 +1,5 @@
 from enum import IntEnum
+from math import isfinite
 from typing import Dict, Tuple
 
 from .current import Current
@@ -8,7 +9,7 @@ from .register import (
     ChannelStatusRegister,
     get_set_bits,
 )
-from .transport import DeviceTransport
+from .transport import DeviceTransport, synchronized, synchronized_transport
 from .voltage import Voltage
 
 
@@ -19,11 +20,12 @@ class Polarity(IntEnum):
 
 class Channel:
     def __init__(self, device: DeviceTransport, channel: int):
-        self._device = device
+        self._device = synchronized_transport(device)
         self._channel = channel
         self._voltage = Voltage(self._device, self._channel)
         self._current = Current(self._device, self._channel)
 
+    @synchronized
     def _query(self, cmd: str) -> str:
         ret = self._device.query(f"{cmd} (@{self._channel})")
         if ret != f"{cmd} (@{self._channel})":
@@ -32,13 +34,9 @@ class Channel:
             )
         return self._device.read()
 
+    @synchronized
     def _write(self, cmd: str):
-        cmd = f"{cmd},(@{self._channel})"
-        ret = self._device.query(cmd)
-        if ret != cmd:
-            raise ValueError(
-                f"channel {self._channel} error in command {cmd}, NHR returned {ret}"
-            )
+        self._device.write_command(f"{cmd},(@{self._channel})")
 
     @property
     def voltage(self) -> Voltage:
@@ -59,7 +57,7 @@ class Channel:
         self._write(":VOLT OFF")
 
     def emergency_off(self):
-        self._write(":VOLT EMCY_OFF")
+        self._write(":VOLT EMCY OFF")
 
     @property
     def emergency(self) -> bool:
@@ -75,7 +73,7 @@ class Channel:
         """
         Clear channel emergency
         """
-        self._write(":VOLT EMCY_CLR")
+        self._write(":VOLT EMCY CLR")
 
     def event_clear(self):
         """
@@ -115,12 +113,23 @@ class Channel:
             )
 
     @polarity.setter
+    @synchronized
     def polarity(self, polarity: Polarity):
+        if not isinstance(polarity, Polarity):
+            raise ValueError("polarity must be a Polarity member")
+        if self.on_state:
+            raise ValueError(f"channel {self._channel} must be off to reverse polarity")
         voltage = self.voltage.measured
-        if voltage != 0:
+        maximum = abs(self.voltage.maximum)
+        if (
+            not isfinite(voltage)
+            or not isfinite(maximum)
+            or maximum <= 0
+            or abs(voltage) >= 0.002 * maximum
+        ):
             raise ValueError(
-                f"channel {self._channel} can't reverse polarity with non-zero voltage"
-                f" {voltage} V"
+                f"channel {self._channel} must discharge below 0.002 * nominal voltage"
+                f" before reversing polarity ({voltage} V measured)"
             )
         self._write(f":CONF:OUTP:POL {polarity.name[0].lower()}")
 
