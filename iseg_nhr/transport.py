@@ -1,6 +1,10 @@
-from typing import Protocol
+from functools import wraps
+from threading import RLock
+from typing import Callable, Protocol, TypeVar
 
 import serial
+
+_T = TypeVar("_T")
 
 
 class DeviceTransport(Protocol):
@@ -9,6 +13,52 @@ class DeviceTransport(Protocol):
     def read(self) -> str: ...
 
     def close(self): ...
+
+
+class SynchronizedTransport:
+    """One transaction lock shared by a module and all of its channel helpers."""
+
+    def __init__(self, device: DeviceTransport):
+        self._device = device
+        self.lock = RLock()
+
+    def query(self, cmd: str) -> str:
+        with self.lock:
+            return self._device.query(cmd)
+
+    def read(self) -> str:
+        with self.lock:
+            return self._device.read()
+
+    def write_command(self, cmd: str) -> None:
+        """Wait for command processing, not merely the character echo."""
+        with self.lock:
+            command = f"{cmd};*OPC?"
+            echo = self._device.query(command)
+            if echo != command:
+                raise ValueError(f"error in command {command}, NHR returned {echo}")
+            response = self._device.read()
+            if response != "1":
+                raise ValueError(f"unexpected operation-complete response: {response}")
+
+    def close(self):
+        with self.lock:
+            self._device.close()
+
+
+def synchronized_transport(device: DeviceTransport) -> SynchronizedTransport:
+    if isinstance(device, SynchronizedTransport):
+        return device
+    return SynchronizedTransport(device)
+
+
+def synchronized(method: Callable[..., _T]) -> Callable[..., _T]:
+    @wraps(method)
+    def wrapper(self, *args, **kwargs) -> _T:
+        with self._device.lock:
+            return method(self, *args, **kwargs)
+
+    return wrapper
 
 
 def remove_suffix(value: str, suffix: str) -> str:
@@ -29,6 +79,8 @@ class SerialTransport:
         encoding: str = "ascii",
         clear_input_before_write: bool = True,
     ):
+        if not termination or not termination.endswith("\n"):
+            raise ValueError("termination must be nonempty and end with a newline")
         self._serial = serial.Serial(
             port=port,
             baudrate=baud_rate,
@@ -52,6 +104,8 @@ class SerialTransport:
         line = self._serial.readline()
         if not line:
             raise TimeoutError("timed out waiting for NHR response")
+        if not line.endswith(self._termination.encode(self._encoding)):
+            raise TimeoutError("incomplete NHR response (missing line terminator)")
         return self._strip_termination(line.decode(self._encoding))
 
     def close(self):

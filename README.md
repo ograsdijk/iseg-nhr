@@ -31,7 +31,7 @@ from iseg_nhr import NHR, Polarity
 with NHR("COM3") as psu:
     channel = psu.channel(0)
 
-    polarity = channel.voltage.polarity
+    polarity = channel.polarity
     print(polarity)
 
     channel.voltage.setpoint = 1_000
@@ -41,6 +41,19 @@ with NHR("COM3") as psu:
 ```
 
 Dynamic channel attributes such as `psu.channel0` are also supported for compatibility.
+
+Operations through one `NHR` instance share a transaction lock, including its
+channel, voltage, current, ramp, and supply helpers. Do not access an injected
+transport directly while the instance is using it. Initialization failures close
+internally created transports; injected transports remain caller-owned on failure.
+
+Serial replies require complete CRLF framing. Writes append `;*OPC?` and wait for
+completion; this does not prove the output reached its target or a protection
+condition allowed the requested state. Read back channel status and measurements.
+`channel.on_state` reads the Set On control flag, not the measured voltage.
+
+Polarity changes require an OFF channel with measured voltage magnitude below
+`0.002 * Vnom`. See [protocol review](docs/protocol-review.md) for manual references.
 
 ## Implementation
 The main NHR class has the following attributes and methods:  

@@ -69,12 +69,14 @@ def test_nhr_validates_echo():
 
 
 def test_channel_write_formats_channel_suffix():
-    transport = make_transport(FakeSerial([":READ:MOD:CHAN?", "1", ":VOLT ON,(@0)"]))
+    transport = make_transport(
+        FakeSerial([":READ:MOD:CHAN?", "1", ":VOLT ON,(@0);*OPC?", "1"])
+    )
     nhr = NHR("COM1", transport=transport)
 
     nhr.channel0.on()
 
-    assert transport._serial.writes[-1] == b":VOLT ON,(@0)\r\n"
+    assert transport._serial.writes[-1] == b":VOLT ON,(@0);*OPC?\r\n"
 
 
 def test_nhr_accepts_resource_name_keyword():
@@ -132,12 +134,12 @@ def test_unit_parser_removes_only_suffix_unit():
 
 
 def test_supply_write_does_not_add_extra_parenthesis():
-    transport = make_transport(FakeSerial([":READ:MOD:CHAN?", "1", ":TEST"]))
+    transport = make_transport(FakeSerial([":READ:MOD:CHAN?", "1", ":TEST;*OPC?", "1"]))
     nhr = NHR("COM1", transport=transport)
 
     nhr.supply._write(":TEST")
 
-    assert transport._serial.writes[-1] == b":TEST\r\n"
+    assert transport._serial.writes[-1] == b":TEST;*OPC?\r\n"
 
 
 def test_channel_properties_are_instance_safe():
@@ -173,10 +175,10 @@ def test_inhibit_commands_use_leading_colon():
 
     assert nhr.channel0.inhibit == nhr.channel0.inhibit_options[1]
 
-    transport._serial.responses.append(b":CONF:INH:ACT 2,(@0)\r\n")
+    transport._serial.responses.extend([b":CONF:INH:ACT 2,(@0);*OPC?\r\n", b"1\r\n"])
     nhr.channel0.inhibit = 2
 
     assert transport._serial.writes[-2:] == [
         b":CONF:INH:ACT? (@0)\r\n",
-        b":CONF:INH:ACT 2,(@0)\r\n",
+        b":CONF:INH:ACT 2,(@0);*OPC?\r\n",
     ]

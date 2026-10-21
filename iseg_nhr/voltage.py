@@ -1,7 +1,12 @@
 from typing import Callable, TypeVar
 
 from .ramp import Ramp
-from .transport import DeviceTransport, remove_suffix
+from .transport import (
+    DeviceTransport,
+    remove_suffix,
+    synchronized,
+    synchronized_transport,
+)
 
 _T = TypeVar("_T")
 
@@ -12,10 +17,11 @@ class Voltage:
     """
 
     def __init__(self, device: DeviceTransport, channel: int):
-        self._device = device
+        self._device = synchronized_transport(device)
         self._channel = channel
         self._ramp = Ramp(self._device, channel, "VOLT")
 
+    @synchronized
     def _query(self, cmd: str) -> str:
         ret = self._device.query(f"{cmd} (@{self._channel})")
         if ret != f"{cmd} (@{self._channel})":
@@ -33,14 +39,9 @@ class Voltage:
     ) -> _T:
         return value_type(remove_suffix(self._query(cmd), unit))
 
+    @synchronized
     def _write(self, cmd: str):
-        cmd = f"{cmd},(@{self._channel})"
-        ret = self._device.query(cmd)
-        if ret != cmd:
-            raise ValueError(
-                f"channel {self._channel} voltage error in command {cmd}, NHR returned"
-                f" {ret}"
-            )
+        self._device.write_command(f"{cmd},(@{self._channel})")
 
     @property
     def ramp(self) -> Ramp:

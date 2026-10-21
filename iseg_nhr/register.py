@@ -29,6 +29,8 @@ class ChannelStatusRegister(Enum):
     IsVoltageRampDown = 20
     IsVoltageBoundUpper = 21
     IsVoltageBoundLower = 22
+    IsFlashover = 26
+    IsFlashoverNumberExceeded = 27
 
 
 class ChannelEventRegister(Enum):
@@ -53,6 +55,8 @@ class ChannelEventRegister(Enum):
     VoltageRampDown = 20
     VotageBoundUpper = 21
     VoltageBoundLower = 22
+    Flashover = 26
+    FlashoverNumberExceeded = 27
 
 
 class ChannelControlRegister(Enum):

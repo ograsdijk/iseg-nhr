@@ -1,6 +1,11 @@
 from typing import Callable, TypeVar
 
-from .transport import DeviceTransport, remove_suffix
+from .transport import (
+    DeviceTransport,
+    remove_suffix,
+    synchronized,
+    synchronized_transport,
+)
 
 _T = TypeVar("_T")
 
@@ -11,18 +16,18 @@ class Supply:
     """
 
     def __init__(self, device: DeviceTransport):
-        self._device = device
+        self._device = synchronized_transport(device)
 
+    @synchronized
     def _query(self, cmd: str) -> str:
         ret = self._device.query(cmd)
         if ret != cmd:
             raise ValueError(f"error in command {cmd}, NHR returned {ret}")
         return self._device.read()
 
+    @synchronized
     def _write(self, cmd: str):
-        ret = self._device.query(cmd)
-        if ret != cmd:
-            raise ValueError(f"error in command {cmd}, NHR returned {ret}")
+        self._device.write_command(cmd)
 
     def _query_type_conv_unit(
         self,
